@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="RadpidOCRCSharpOnnx.Console/RadpidOCRCSharpOnnx.ConsoleApp.csproj" />
+  <Project Path="RadpidOCRCSharpOnnx.Test/RadpidOCRCSharpOnnx.Test.csproj" />
+  <Project Path="RadpidOCRCSharpOnnx/RadpidOCRCSharpOnnx.csproj" />
+</Solution>
