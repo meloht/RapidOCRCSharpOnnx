@@ -14,19 +14,29 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
     public class TextDetector
     {
         private OrtInferSession _session;
-        private int _minSize = 3;
+        private const int _minSize = 3;
+        private const int _BOX_SORT_Y_THRESHOLD = 10;
+        System.Diagnostics.Stopwatch _timer;
         public TextDetector()
         {
+            _timer = new System.Diagnostics.Stopwatch();
             _session = new OrtInferSession(DetConfig.ModelPath);
         }
 
 
-        public void Run(string imgPath)
+        public TextDetOutput Run(string imgPath)
         {
+            _timer.Restart();
             using Mat image = Cv2.ImRead(imgPath);
             var data = Preprocess(image);
 
             using var outData = _session.RunInference(data);
+            var res = DBPostProcess(outData, image.Height, image.Width);
+
+            var boxs = SortedBoxes(res.boxes);
+            _timer.Stop();
+            
+            return new TextDetOutput(boxs, res.scores, (int)_timer.ElapsedMilliseconds);
         }
 
         private DataTensorDimensions Preprocess(Mat image)
@@ -171,6 +181,44 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
             var (filteredBoxes, filteredScores) = FilterBoxes(boxes, scores, oriHeight, oriWidth);
 
             return (filteredBoxes, filteredScores);
+        }
+
+        // 可根据需要调整阈值，或作为参数传入
+        private const double BOX_SORT_Y_THRESHOLD = 0.1;
+
+        /// <summary>
+        /// 对点列表进行排序：先按 Y 坐标从上到下，然后按 X 坐标从左到右，
+        /// 并使用 Y 阈值将点划分为不同的行。
+        /// </summary>
+        /// <param name="dtBoxes">待排序的点列表（每个点代表一个边界框的左上角）</param>
+        /// <returns>排序后的点列表</returns>
+        public List<Point2f[]> SortedBoxes(List<Point2f[]> dtBoxes)
+        {
+            if (dtBoxes == null || dtBoxes.Count == 0)
+                return dtBoxes ?? new List<Point2f[]>();
+
+            // 1. 按第一个点的 Y 坐标稳定排序（OrderBy 默认稳定）
+            var sortedByY = dtBoxes.OrderBy(box => box[0].Y).ToList();
+            int n = sortedByY.Count;
+
+            // 2. 分配行 ID：第一个点行 ID 为 0，后续若与前一个点 Y 差 >= 阈值，则换行
+            int[] lineIds = new int[n];
+            lineIds[0] = 0;
+            for (int i = 1; i < n; i++)
+            {
+                float dy = sortedByY[i][0].Y - sortedByY[i - 1][0].Y;
+                lineIds[i] = lineIds[i - 1] + (dy >= _BOX_SORT_Y_THRESHOLD ? 1 : 0);
+            }
+
+            // 3. 按行 ID 升序，同一行内按 X 坐标升序排序
+            var result = sortedByY
+                .Select((box, idx) => new { Box = box, LineId = lineIds[idx] })
+                .OrderBy(item => item.LineId)          // 先按行号
+                .ThenBy(item => item.Box[0].X)         // 再按 X 坐标
+                .Select(item => item.Box)
+                .ToList();
+
+            return result;
         }
         /// <summary>
         /// 从二值化图提取检测框
