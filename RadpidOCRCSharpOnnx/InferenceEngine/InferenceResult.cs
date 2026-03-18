@@ -4,12 +4,12 @@ using System.Text;
 
 namespace RadpidOCRCSharpOnnx.InferenceEngine
 {
-    public struct ClsResult
+    public struct InferenceResult
     {
         public string Label { get; set; }
         public float Score { get; set; }
 
-        public ClsResult(string label, float score)
+        public InferenceResult(string label, float score)
         {
             Label = label;
             Score = score;

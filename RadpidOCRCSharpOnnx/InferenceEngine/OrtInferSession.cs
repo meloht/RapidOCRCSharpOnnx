@@ -88,6 +88,14 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
             return new List<string>();
         }
 
+        public bool HaveKey(string key= "character")
+        {
+            var map = _inferenceSession.ModelMetadata.CustomMetadataMap;
+            if (map.ContainsKey(key))
+                return true;
+            return false;
+        }
+
 
         public void Dispose()
         {

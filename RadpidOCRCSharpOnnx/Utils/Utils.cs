@@ -36,6 +36,10 @@ namespace RadpidOCRCSharpOnnx.Utils
             return text.Any(ch => IsChineseChar(ch));
         }
 
+      
+
+       
+
         public static void SaveImg(string savePath, Mat img)
         {
             // 空值防护

@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+
 
 namespace RadpidOCRCSharpOnnx.InferenceEngine
 {
@@ -38,10 +38,10 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
 
             Array.Sort(indices, (a, b) => widthList[a].CompareTo(widthList[b]));
             int imgCount = imgList.Length;
-            ClsResult[] cls_res = new ClsResult[imgCount];
+            InferenceResult[] cls_res = new InferenceResult[imgCount];
             for (int i = 0; i < imgCount; i++)
             {
-                cls_res[i] = new ClsResult("", 0.0f);
+                cls_res[i] = new InferenceResult("", 0.0f);
             }
 
             int idx = 0;
@@ -76,7 +76,7 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
             }
         }
 
-        public ClsResult[] ClsPostProcess(OrtValue ortValue)
+        public InferenceResult[] ClsPostProcess(OrtValue ortValue)
         {
 
             var shapeInfo = ortValue.GetTensorTypeAndShape();
@@ -87,26 +87,26 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
             if (data.Length != batchSize * numClasses)
                 throw new InvalidOperationException("Data length mismatch.");
 
-            ClsResult[] results = new ClsResult[batchSize];
+            InferenceResult[] results = new InferenceResult[batchSize];
 
-            int rowStart = 0;
+            int idx = 0;
             int maxIdx = 0;
+            float maxVal = float.MinValue;
             for (int i = 0; i < batchSize; i++)
             {
-                rowStart = i * numClasses;
                 maxIdx = 0;
-                float maxVal = data[rowStart];
+                maxVal = float.MinValue;
 
-                for (int j = 1; j < numClasses; j++)
+                for (int j = 0; j < numClasses; j++)
                 {
-                    float val = data[rowStart + j];
+                    float val = data[idx++];
                     if (val > maxVal)
                     {
                         maxVal = val;
                         maxIdx = j;
                     }
                 }
-                results[i] = new ClsResult(ClsConfig.LabelList[maxIdx], maxVal);
+                results[i] = new InferenceResult(ClsConfig.LabelList[maxIdx], maxVal);
             }
             return results;
         }
@@ -125,14 +125,14 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
             float ratio = (float)w / h;
             double estimatedWidth = Math.Ceiling(img_h * ratio);
 
-            int resized_w = estimatedWidth > img_w ? img_w : (int)Math.Ceiling(img_h * ratio);
+            int resized_w = estimatedWidth > img_w ? img_w : (int)estimatedWidth;
 
             // 缩放图像到 (resized_w, img_h)
-            Mat resized = new Mat();
+            using Mat resized = new Mat();
             Cv2.Resize(img, resized, new OpenCvSharp.Size(resized_w, img_h));
 
             // 转换为 float 类型并除以 255，得到 [0,1] 范围
-            Mat resizedFloat = new Mat();
+            using Mat resizedFloat = new Mat();
             if (channels == 1)
                 resized.ConvertTo(resizedFloat, MatType.CV_32FC1, 1.0 / 255.0);
             else
@@ -205,41 +205,35 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
             int resized_w = estimatedWidth > img_w ? img_w : (int)Math.Ceiling(img_h * ratio);
 
             // 缩放图像到 (resized_w, img_h)
-            Mat resized = new Mat();
+            using Mat resized = new Mat();
             Cv2.Resize(img, resized, new OpenCvSharp.Size(resized_w, img_h));
 
-            using var canvas = new Mat(new OpenCvSharp.Size(img_w, img_h), MatType.CV_8UC3, new Scalar(0, 0, 0));
-            resized.CopyTo(new Mat(canvas, new Rect(0, 0, resized_w, img_h)));
             // 2. 归一化并转换为 Tensor (HWC -> CHW)
-            GetChwArr(canvas, imgData);
-            return imgData;
-        }
 
-        private void GetChwArr(Mat paddedImg, float[] data)
-        {
-            int height = paddedImg.Height;
-            int width = paddedImg.Width;
-            int channels = paddedImg.Channels();
             int index = 0;
-            for (int c = 0; c < channels; c++)          // 通道（R=0, G=1, B=2）
+            for (int i = 0; i < img_c; i++)
             {
-                for (int h = 0; h < height; h++)  // 高度
+                for (int j = 0; j < img_h; j++)
                 {
-                    for (int w = 0; w < width; w++)  // 宽度
+                    for (int k = 0; k < img_w; k++)
                     {
-                        var vec = paddedImg.At<Vec3b>(h, w);
-                        if (vec[c] != 0)
+                        if (i < channels && k < resized_w)
                         {
-                            data[index++] = ((float)vec[c] / 255.0f) * 2f - 1f;
+                            var vec = (float)resized.At<Vec3b>(j, k)[i];
+                            vec = (vec / 255.0f) * 2f - 1f;
+                            imgData[index++] = vec;
                         }
                         else
                         {
-                            data[index++] = 0f;
+                            imgData[index++] = 0.0f;
                         }
-
                     }
                 }
             }
+
+            return imgData;
         }
+
+
     }
 }
