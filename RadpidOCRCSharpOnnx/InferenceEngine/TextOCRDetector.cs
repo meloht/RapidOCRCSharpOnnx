@@ -11,23 +11,23 @@ using System.Text;
 
 namespace RadpidOCRCSharpOnnx.InferenceEngine
 {
-    public class TextDetector
+    public class TextOCRDetector:IDisposable
     {
         private OrtInferSession _session;
         private const int _minSize = 3;
         private const int _BOX_SORT_Y_THRESHOLD = 10;
         System.Diagnostics.Stopwatch _timer;
-        public TextDetector()
+        public TextOCRDetector()
         {
             _timer = new System.Diagnostics.Stopwatch();
             _session = new OrtInferSession(DetConfig.ModelPath);
         }
 
 
-        public TextDetOutput Run(string imgPath)
+        public TextDetOutput Run(Mat image)
         {
             _timer.Restart();
-            using Mat image = Cv2.ImRead(imgPath);
+           
             var data = Preprocess(image);
 
             using var outData = _session.RunInference(data);
@@ -128,8 +128,8 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
         private float[] NormalizeAndPermute(Mat img)
         {
             int len = img.Width * img.Height * 3;
-            float[] data = ArrayPool<float>.Shared.Rent(len);
-
+            //float[] data = ArrayPool<float>.Shared.Rent(len);
+            float[] data=new float[len];
             int height = img.Height;
             int width = img.Width;
             int channels = img.Channels();
@@ -157,14 +157,15 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
         /// <returns></returns>
         public (List<Point2f[]> boxes, List<float> scores) DBPostProcess(OrtValue output, int oriHeight, int oriWidth)
         {
-            //获取OrtValue维度[1, 1, H, W]
-            float[] dataArray = output.GetTensorDataAsSpan<float>().ToArray();
             var shape = output.GetTensorTypeAndShape().Shape;
+            //获取OrtValue维度[1, 1, H, W]
+            var dataArray = output.GetTensorDataAsSpan<float>();
+           
             int h = (int)shape[2];
             int w = (int)shape[3];
 
             Mat matPred = new Mat(h, w, MatType.CV_32FC1);
-            matPred.SetArray(dataArray);
+            matPred.SetArray(dataArray.ToArray());
 
             Mat mask = new Mat();
             Cv2.Threshold(matPred, mask, DetConfig.Thresh, 255, ThresholdTypes.Binary);
@@ -470,7 +471,9 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
 
         }
 
-
-       
+        public void Dispose()
+        {
+            _session?.Dispose();
+        }
     }
 }

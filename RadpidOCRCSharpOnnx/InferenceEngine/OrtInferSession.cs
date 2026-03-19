@@ -25,7 +25,7 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
         {
             SessionOptions options = new SessionOptions();
             options.LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_FATAL;
-            options.EnableCpuMemArena = OnnxEngineConfig.EnableCpuMemArena;
+          //  options.EnableCpuMemArena = OnnxEngineConfig.EnableCpuMemArena;
             options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
             int cpu_nums = Environment.ProcessorCount;
             int intra_op_num_threads = OnnxEngineConfig.IntraOpNumThreads;
@@ -61,7 +61,7 @@ namespace RadpidOCRCSharpOnnx.InferenceEngine
             }
             finally
             {
-                ArrayPool<float>.Shared.Return(dataTensor.Data);
+               // ArrayPool<float>.Shared.Return(dataTensor.Data);
             }
 
         }
