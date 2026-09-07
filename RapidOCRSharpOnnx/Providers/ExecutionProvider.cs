@@ -43,7 +43,7 @@ namespace RapidOCRSharpOnnx.Providers
                 sessionOptions = new SessionOptions();
                 sessionOptions.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
                 sessionOptions.EnableCpuMemArena = true;
-                sessionOptions.EnableMemoryPattern = false;
+                sessionOptions.EnableMemoryPattern = true;
             }
             return sessionOptions;
 
