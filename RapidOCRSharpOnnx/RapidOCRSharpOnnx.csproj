@@ -35,9 +35,9 @@
 
 	<ItemGroup>
 		<PackageReference Include="Clipper2" Version="2.0.0" />
-		<PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" Version="1.28.0" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" Version="1.29.0" />
 		<PackageReference Include="OpenCvSharp4" Version="4.13.0.20260627" />
-		<PackageReference Include="SkiaSharp" Version="4.151.1" />
+		<PackageReference Include="SkiaSharp" Version="4.151.2" />
 	</ItemGroup>
 
 	
